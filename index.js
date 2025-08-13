@@ -8,7 +8,7 @@ import { spawn } from "child_process";
 const app = express();
 app.use(express.json({ limit: "50mb" }));
 
-// Baixa arquivo para /tmp
+// Função para baixar arquivo temporário
 async function downloadFile(url, ext) {
   const filePath = path.join(os.tmpdir(), `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
   const res = await axios.get(url, { responseType: "arraybuffer" });
@@ -37,12 +37,15 @@ app.post("/render", async (req, res) => {
       return res.status(400).json({ error: "Faltando image_url ou audio_url" });
     }
 
+    // Baixa a imagem e o áudio (.wav)
     const imgPath = await downloadFile(image_url, "jpg");
     const audPath = await downloadFile(audio_url, "wav");
     const outPath = path.join(os.tmpdir(), `out_${Date.now()}.mp4`);
 
+    // Amplitude do pêndulo em radianos
     const amp_rad = (amp_deg * Math.PI) / 180;
 
+    // Filtro do FFmpeg (pêndulo + zoom + noise)
     const filter = `
       [0:v]scale=${Math.round(width * 1.2)}:${Math.round(height * 1.2)},setsar=1,
       rotate='${amp_rad}*sin(2*PI*t/${period_s})':fillcolor=black@0,
@@ -74,19 +77,25 @@ app.post("/render", async (req, res) => {
 
     const ff = spawn("ffmpeg", args);
     let stderr = "";
+
     ff.stderr.on("data", d => stderr += d.toString());
+
     ff.on("close", (code) => {
       if (code !== 0) {
         return res.status(500).json({ error: "Erro no FFmpeg", details: stderr });
       }
-      res.setHeader("Content-Type", "video/mp4");
+      // Envia o MP4 como anexo para download
+      res.setHeader("Content-Type", "application/octet-stream");
+      res.setHeader("Content-Disposition", 'attachment; filename="output.mp4"');
       res.send(fs.readFileSync(outPath));
     });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Porta padrão do Railway
 app.listen(process.env.PORT || 3000, () => {
   console.log("Servidor rodando na porta", process.env.PORT || 3000);
 });
