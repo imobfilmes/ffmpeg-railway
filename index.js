@@ -18,11 +18,10 @@ async function downloadFile(url, ext) {
   return filePath;
 }
 
-app.post("/render", async (req, res) => {
+app.post("/render", upload.fields([{ name: "image" }, { name: "audio" }]), async (req, res) => {
   try {
-    const {
-      image_url,
-      audio_url,
+    const imgPath = req.files["image"][0].path;
+    const audPath = req.files["audio"][0].path;
       amp_deg = 8,
       period_s = 3,
       zoom_amp_pct = 5,
