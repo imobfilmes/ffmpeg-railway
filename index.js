@@ -6,7 +6,9 @@ import path from "path";
 import { spawn } from "child_process";
 
 const app = express();
-app.use(express.json({ limit: "50mb" }));
+import multer from "multer";
+const upload = multer({ dest: os.tmpdir() });
+
 
 // Função para baixar arquivo temporário
 async function downloadFile(url, ext) {
